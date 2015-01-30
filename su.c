@@ -370,6 +370,18 @@ int su_main(int argc, char *argv[], int need_client) {
     if (argc == 2 && strcmp(argv[1], "--daemon") == 0) {
         return run_daemon();
     }
+    /* SuperSU - Compatibility Hack
+       Check for Short Context argument switch -cn and switch it to -C
+       Some Applications call su with -cn. This option is only available
+       in the su binary supplied with SuperSU
+    */
+    int i = 0 ;
+    for ( i = 0 ;  i < argc ; i++ ){
+        if ( strncmp(argv[i],"-cn",3) == 0 ){
+            argv[i]="-C\x0";
+            break;
+        }
+    }
 
     int ppid = getppid();
     fork_for_samsung();
@@ -445,10 +457,11 @@ int su_main(int argc, char *argv[], int need_client) {
         { "preserve-environment",    no_argument,        NULL, 'p' },
         { "shell",            required_argument,    NULL, 's' },
         { "version",            no_argument,        NULL, 'v' },
+        { "context",            required_argument,        NULL, 'C' },
         { NULL, 0, NULL, 0 },
     };
 
-    while ((c = getopt_long(argc, argv, "+c:hlmps:Vv", long_opts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "+c:+C:hlmps:Vv", long_opts, NULL)) != -1) {
         switch(c) {
         case 'c':
             ctx.to.shell = DEFAULT_SHELL;
@@ -473,6 +486,11 @@ int su_main(int argc, char *argv[], int need_client) {
         case 'v':
             printf("%s\n", VERSION);
             exit(EXIT_SUCCESS);
+        case 'C':
+            /* Ignore specific context request for now
+                TODO: Call setfilecon with specific context or something */
+            ALOGW("Context Option Specified Argument=%s\n",optarg);
+            break;
         default:
             /* Bionic getopt_long doesn't terminate its error output by newline */
             fprintf(stderr, "\n");
